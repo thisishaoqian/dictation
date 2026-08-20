@@ -1,27 +1,36 @@
 # Sample sentences for La dictée.
-# One sentence per line. Lines starting with # are ignored, so you can use
-# them to organise your own files.
+#
+# One item per line:
+#   French sentence | English translation     <- works in every mode
+#   French sentence                           <- listening mode only
+#
+# Everything from a "#" to the end of the line is a comment, so you can
+# annotate individual lines. Use \# and \| if you need a literal # or |.
 
 # --- Everyday ---
-Il fait très beau aujourd'hui.
-Je voudrais un café, s'il vous plaît.
-Où est la gare, s'il vous plaît ?
-Nous partons demain matin à huit heures.
-Elle a oublié son parapluie dans le train.
-Le chat noir dort sur le canapé.
-J'ai acheté du pain et des œufs au marché.
-Est-ce que tu peux répéter, s'il te plaît ?
-Mon frère travaille dans une école à Lyon.
-Il y a beaucoup de monde dans la rue.
+Il fait très beau aujourd'hui. | The weather is very nice today.
+Je voudrais un café, s'il vous plaît. | I would like a coffee, please.
+Où est la gare, s'il vous plaît ? | Where is the station, please?
+Nous partons demain matin à huit heures. | We are leaving tomorrow morning at eight.
+Elle a oublié son parapluie dans le train. | She forgot her umbrella on the train.
+Le chat noir dort sur le canapé. | The black cat is sleeping on the sofa.
+J'ai acheté du pain et des œufs au marché. | I bought bread and eggs at the market.
+Est-ce que tu peux répéter, s'il te plaît ? | Can you repeat that, please?
+Mon frère travaille dans une école à Lyon. | My brother works in a school in Lyon.
+Il y a beaucoup de monde dans la rue. | There are a lot of people in the street.
 
 # --- A bit harder ---
-Les enfants ont mangé toutes les fraises du jardin.
-Si j'avais su, je ne serais pas venu si tôt.
-Elle m'a dit qu'elle viendrait vers dix-sept heures.
-La fenêtre de la chambre était restée ouverte toute la nuit.
-Nous nous sommes promenés le long de la rivière.
-Il faut que tu finisses tes devoirs avant de sortir.
-Ce sont les livres dont je t'ai parlé la semaine dernière.
-Malgré la pluie, ils ont décidé de continuer la randonnée.
-J'espère que vous avez passé de bonnes vacances en Suisse.
-Le train de quatorze heures trente a vingt minutes de retard.
+Les enfants ont mangé toutes les fraises du jardin. | The children ate all the strawberries from the garden.
+Si j'avais su, je ne serais pas venu si tôt. | If I had known, I would not have come so early.
+Elle m'a dit qu'elle viendrait vers dix-sept heures. | She told me she would come around five o'clock.
+La fenêtre de la chambre était restée ouverte toute la nuit. | The bedroom window had stayed open all night.
+Nous nous sommes promenés le long de la rivière. | We walked along the river.
+Il faut que tu finisses tes devoirs avant de sortir. | You have to finish your homework before going out.
+Ce sont les livres dont je t'ai parlé la semaine dernière. | Those are the books I told you about last week.
+Malgré la pluie, ils ont décidé de continuer la randonnée. | Despite the rain, they decided to carry on with the hike.
+J'espère que vous avez passé de bonnes vacances en Suisse. | I hope you had a good holiday in Switzerland.
+Le train de quatorze heures trente a vingt minutes de retard. | The two-thirty train is twenty minutes late.
+
+# --- Listening-only examples (no translation given) ---
+Voulez-vous que je vous accompagne ?
+Elle chante bien mieux que moi.   # no translation, so this one is never a translate round

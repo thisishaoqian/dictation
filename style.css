@@ -19,6 +19,10 @@
 
 * { box-sizing: border-box; }
 
+/* The hidden attribute must beat our display rules (.playrow, .filechip … are
+   flex containers, whose display would otherwise win). */
+[hidden] { display: none !important; }
+
 html, body { margin: 0; min-height: 100%; }
 
 body {
@@ -338,4 +342,65 @@ mark.good { background: transparent; color: var(--ok); font-weight: 700; text-de
   .playrow { flex-direction: column; align-items: stretch; }
   .setting { flex-wrap: wrap; }
   .setting > span:first-child { min-width: 100%; }
+}
+
+/* ------------------------------------------------- mode picker (added v2) */
+
+.control--stack { flex-direction: column; align-items: stretch; gap: 8px; }
+.control--stack .control__label { margin-bottom: 2px; }
+.control__hint { margin: 2px 0 0; color: var(--muted); font-size: 0.78rem; line-height: 1.4; }
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 4px;
+}
+.seg {
+  font: inherit;
+  font-size: 0.92rem;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 9px;
+  padding: 9px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.seg:hover:not([disabled]):not([aria-checked="true"]) { background: rgba(108, 123, 255, 0.14); color: var(--text); }
+.seg[aria-checked="true"] { background: var(--brand); color: #fff; font-weight: 600; }
+.seg[disabled] { opacity: 0.35; cursor: not-allowed; }
+.seg.is-locked { cursor: not-allowed; opacity: 0.75; }
+
+/* ---------------------------------------------- translate prompt (added v2) */
+
+.prompt {
+  background: var(--bg-soft);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--brand);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+}
+.prompt__label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 4px;
+}
+.prompt__text { margin: 0; font-size: 1.15rem; line-height: 1.5; }
+
+.feedback__en { margin: 0 0 12px; color: var(--muted); font-size: 0.9rem; font-style: italic; }
+
+.r-kind { font-size: 0.8rem; }
+.r-en { margin: 4px 0 0 2.6em; color: var(--muted); font-size: 0.85rem; font-style: italic; }
+
+@media (max-width: 480px) {
+  .segmented { grid-template-columns: 1fr; }
 }

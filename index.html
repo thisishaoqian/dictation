@@ -3,22 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>La dictée — French Dictation Game</title>
-  <meta name="description" content="Practise French dictation with your own sentences. Everything runs in your browser; your text file never leaves your device.">
+  <title>La dictée — French Dictation & Translation Game</title>
+  <meta name="description" content="Practise French dictation and translation with your own sentences. Everything runs in your browser; your text file never leaves your device.">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main class="app">
     <header class="app__header">
       <h1>La dictée</h1>
-      <p class="tagline">Listen to a French sentence, type what you hear, and see exactly what you missed.</p>
+      <p class="tagline">Hear it or read the English — either way, type the French and see exactly what you missed.</p>
     </header>
 
     <!-- ---------------------------------------------------------- file setup -->
     <section class="source" id="source" aria-label="Sentence file">
       <div class="dropzone" id="dropzone">
         <p class="dropzone__title">Drop your <code>.txt</code> file here</p>
-        <p class="dropzone__hint">One sentence per line. Lines starting with <code>#</code> are ignored.</p>
+        <p class="dropzone__hint">
+          One sentence per line, optionally <code>French | English</code>.
+          Anything after a <code>#</code> is a comment.
+        </p>
         <label class="btn btn--primary dropzone__btn">
           Choose a file…
           <input type="file" id="file" accept=".txt,.text,text/plain" hidden>
@@ -39,6 +42,16 @@
 
     <!-- ------------------------------------------------------------ controls -->
     <section class="controls" aria-label="Game settings">
+      <div class="control control--stack">
+        <span class="control__label">Mode</span>
+        <div class="segmented" id="modes" role="radiogroup" aria-label="Exercise mode">
+          <button type="button" class="seg" data-mode="listen" role="radio" aria-checked="true">🎧 Listen</button>
+          <button type="button" class="seg" data-mode="translate" role="radio" aria-checked="false">🇬🇧 Translate</button>
+          <button type="button" class="seg" data-mode="mixed" role="radio" aria-checked="false">🔀 Mixed</button>
+        </div>
+        <p class="control__hint" id="mode-hint"></p>
+      </div>
+
       <div class="control">
         <label class="control__label" for="rounds">Rounds</label>
         <select id="rounds">
@@ -59,7 +72,12 @@
 
     <!-- --------------------------------------------------------------- stage -->
     <section class="stage" id="stage">
-      <div class="playrow">
+      <div class="prompt" id="prompt" hidden>
+        <span class="prompt__label">Translate into French</span>
+        <p class="prompt__text" id="prompt-text"></p>
+      </div>
+
+      <div class="playrow" id="playrow">
         <button id="play" class="play" aria-label="Play the sentence" disabled>
           <span class="play__icon" aria-hidden="true">▶</span>
           <span id="play-label" class="play__text">Start dictation</span>
@@ -143,7 +161,7 @@
     </details>
 
     <footer class="app__footer">
-      <span id="prompt-hint"><kbd>Enter</kbd> to check / continue · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line · <kbd>Space</kbd> to replay</span>
+      <span id="prompt-hint"><kbd>Enter</kbd> to check / continue · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line · <kbd>Space</kbd> to replay a listening round</span>
     </footer>
   </main>
 

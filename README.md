@@ -1,9 +1,14 @@
 # La dictée — French Dictation Game
 
-A tiny browser game for practising French dictation with **your own sentences**.
-Drop in a `.txt` file, and the game reads a random line aloud in French; you type
-what you hear, and it shows you exactly what went wrong — word by word, letter by
-letter — along with the correction.
+A tiny browser game for practising French with **your own sentences**. Drop in a
+`.txt` file and pick an exercise:
+
+- 🎧 **Listen** — the sentence is read aloud in French; you type what you hear.
+- 🇬🇧 **Translate** — the English is shown; you type the French. No audio.
+- 🔀 **Mixed** — a random one of the two each round.
+
+Either way it shows you exactly what went wrong — word by word, letter by letter
+— along with the correction.
 
 No build step, no dependencies, no server, no database. Your text file is read in
 your browser and **never leaves your device**.
@@ -11,19 +16,20 @@ your browser and **never leaves your device**.
 ## How to play
 
 1. **Load a file** — drag a `.txt` onto the page, or click *Choose a file…*.
-   One sentence per line; blank lines and lines starting with `#` are ignored,
-   and duplicates are collapsed. `sample.txt` in this repo is there to try it out.
-2. Choose how many **rounds** (5, 10, 20, or the whole file) and press
-   **Start dictation**. The timer starts.
-3. Each round: listen, then type the sentence and press <kbd>Enter</kbd> (or
-   **Check**).
-   - **▶ Replay** — or <kbd>Space</kbd> when you're not typing — repeats it.
-   - **🐢 Slower** repeats it at 70% speed.
+   See [Your text file](#your-text-file) below for the format. `sample.txt` in
+   this repo is there to try it out.
+2. Pick a **mode** and how many **rounds** (5, 10, 20, or the whole file), then
+   press **Start dictation**. The timer starts.
+3. Each round: type the French sentence and press <kbd>Enter</kbd> (or **Check**).
+   - In a listening round, **▶ Replay** — or <kbd>Space</kbd> when you're not
+     typing — repeats it, and **🐢 Slower** repeats it at 70% speed.
+   - In a translation round there is no audio at all until you have answered;
+     then a **▶ Hear it** button appears so you can hear the sentence too.
    - **Reveal** gives up and shows the answer.
    - <kbd>Shift</kbd>+<kbd>Enter</kbd> inserts a newline instead of submitting.
 4. After the last sentence you get a **results screen**: sentences correct,
-   overall word accuracy, total and average time, every sentence with its diff,
-   plus **Play again** and **Retry my mistakes**.
+   overall word accuracy, total and average time, every sentence with its diff
+   and which kind of round it was, plus **Play again** and **Retry my mistakes**.
 
 Your file and your settings are remembered in the browser, so a reload drops you
 straight back in.
@@ -57,6 +63,28 @@ punctuation, so with the default settings `vingt-deux` and `vingt deux` both pas
 
 ## Your text file
 
+One item per line. A sentence on its own works in listening mode; add
+`| English translation` to make it usable in Translate and Mixed too:
+
+```
+Il fait très beau aujourd'hui. | The weather is very nice today.
+Le chat noir dort sur le canapé. | The black cat is sleeping on the sofa.
+Voulez-vous que je vous accompagne ?
+```
+
+- **Separator** — `|` or a tab. Spaces around it don't matter.
+- **Comments** — everything from a `#` to the end of the line is ignored,
+  wherever it appears, so you can annotate individual lines:
+  `J'ai froid. | I'm cold.   # subjunctive practice`
+- **Escapes** — `\#`, `\|` and `\\` give you a literal `#`, `|` or `\`.
+- Blank lines are skipped, and duplicate French sentences are collapsed (if one
+  copy has a translation and another doesn't, the translation is kept).
+- A line with only an English half, or with no letters at all, is dropped.
+
+Translate and Mixed are greyed out for a file with no translations at all, and
+in Mixed mode any sentence lacking a translation simply becomes a listening
+round. So **your old French-only files keep working unchanged**.
+
 Plain UTF-8 is expected; a file saved by Windows in cp1252 is detected and
 re-decoded so the accents survive. Lines over 400 characters are skipped — this
 is a sentence dictation game, not a paragraph one. Files up to about 1 MB are
@@ -64,7 +92,10 @@ remembered between visits; larger ones work fine but need re-picking each time.
 
 ## A note on audio
 
-The game uses your browser's built-in speech synthesis (the Web Speech API).
+Listening rounds use your browser's built-in speech synthesis (the Web Speech
+API). Translate mode needs no audio at all, so it works on a silent device or
+with no French voice installed.
+
 Audio must be started by a tap or click (a browser rule), which is why there's a
 Start button. Long sentences are split into chunks before being spoken, because
 some engines truncate long utterances, and a keep-alive nudge works around
@@ -113,14 +144,19 @@ but these static files.
 | `text-source.js` | Reading and parsing the user's `.txt`, localStorage cache      |
 | `diff-fr.js`     | The diff engine: tokenizer, word alignment, character diff     |
 | `test-diff.js`   | Node self-tests for the diff engine                            |
-| `sample.txt`     | Example sentences                                              |
+| `test-source.js` | Node self-tests for the file parser                            |
+| `sample.txt`     | Example sentences with translations                            |
 
-## Developing / testing the diff logic
+## Developing / testing
 
 ```bash
-node test-diff.js
+node test-diff.js      # grading
+node test-source.js    # file parsing
 ```
 
-Covers normalization, the tokenizer (elisions, hyphens), word alignment
-(substitutions, missing and extra words, transpositions), character-level
-detail, and every combination of the three marking dials.
+`test-diff.js` covers normalization, the tokenizer (elisions, hyphens), word
+alignment (substitutions, missing and extra words, transpositions),
+character-level detail, and every combination of the three marking dials.
+
+`test-source.js` covers both separators, escapes, comments in every position,
+duplicates, over-long lines, and lines missing one half.

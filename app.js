@@ -1,28 +1,33 @@
 /* app.js — timed French dictation game.
  *
- * Flow: load a .txt -> pick N random lines -> for each, speak it, take the
- * typed answer, diff it, show the correction -> results screen.
+ * Two kinds of round, from the same file:
+ *   listen    — the French is spoken, you type what you hear
+ *   translate — the English is shown, you type the French (no audio)
+ *
+ * A line only qualifies for a translate round if the file gave it a
+ * translation ("French | English"); otherwise it is listen-only.
  */
 (function () {
   'use strict';
 
-  var SETTINGS_KEY = 'dictation:settings';
+  var SETTINGS_KEY = 'dictation:settings:v2';
 
   // ------------------------------------------------------------------ state
 
   var state = {
-    source: null,       // {name, lines}
+    source: null,       // {name, items:[{fr,en}], withTranslation}
+    mode: 'listen',     // 'listen' | 'translate' | 'mixed'
     rounds: 10,         // number, or 'all'
     rate: 0.9,
     voiceURI: '',
     marking: { case: 'ignore', accents: 'minor', punct: 'ignore' },
 
     active: false,
-    queue: [],          // sentences for this session
+    queue: [],          // [{fr, en, kind}] for this session
     index: 0,           // 0-based position in queue
     answered: false,
     correct: 0,
-    results: [],        // {line, answer, result}
+    results: [],        // {entry, answer, result, revealed}
     startTime: 0
   };
 
@@ -35,10 +40,11 @@
     fileName: $('file-name'), fileCount: $('file-count'), changeFile: $('change-file'),
     sourceError: $('source-error'), sourceNote: $('source-note'),
 
-    rounds: $('rounds'),
+    modes: $('modes'), modeHint: $('mode-hint'), rounds: $('rounds'),
     round: $('round'), correct: $('correct'), time: $('time'),
 
-    stage: $('stage'), play: $('play'), playLabel: $('play-label'), slow: $('slow'),
+    stage: $('stage'), prompt: $('prompt'), promptText: $('prompt-text'),
+    playrow: $('playrow'), play: $('play'), playLabel: $('play-label'), slow: $('slow'),
     form: $('answer-form'), input: $('answer'), check: $('check'), reveal: $('reveal'),
     feedback: $('feedback'),
 
@@ -50,12 +56,15 @@
     optAccents: $('opt-accents'), optCase: $('opt-case'), optPunct: $('opt-punct')
   };
 
+  var modeButtons = Array.prototype.slice.call(el.modes.querySelectorAll('.seg'));
+
   // ---------------------------------------------------------------- settings
 
   function saveSettings() {
     try {
       localStorage.setItem(SETTINGS_KEY, JSON.stringify({
-        rounds: state.rounds, rate: state.rate, voiceURI: state.voiceURI, marking: state.marking
+        mode: state.mode, rounds: state.rounds, rate: state.rate,
+        voiceURI: state.voiceURI, marking: state.marking
       }));
     } catch (e) { /* private mode — fine */ }
   }
@@ -64,6 +73,7 @@
     var data;
     try { data = JSON.parse(localStorage.getItem(SETTINGS_KEY) || 'null'); } catch (e) { data = null; }
     if (!data) return;
+    if (data.mode) state.mode = data.mode;
     if (data.rounds) { state.rounds = data.rounds; el.rounds.value = String(data.rounds); }
     if (typeof data.rate === 'number') { state.rate = data.rate; el.rate.value = String(data.rate); }
     if (typeof data.voiceURI === 'string') state.voiceURI = data.voiceURI;
@@ -74,6 +84,7 @@
       el.optPunct.value = state.marking.punct;
     }
     el.rateOut.textContent = state.rate + '×';
+    paintModeButtons();
   }
 
   // ------------------------------------------------------------------ speech
@@ -115,7 +126,7 @@
 
   function updateVoiceNote() {
     if (!synth) {
-      el.voiceNote.textContent = '⚠ This browser has no speech synthesis. The sentence is shown as text instead.';
+      el.voiceNote.textContent = '⚠ This browser has no speech synthesis. Listening rounds will not work — use Translate mode.';
       return;
     }
     if (!voices.length) {
@@ -186,9 +197,9 @@
   function stopKeepAlive() { if (keepAlive) { clearInterval(keepAlive); keepAlive = null; } }
 
   function speakCurrent(slow) {
-    var line = state.queue[state.index];
-    if (!line) return;
-    speak(line, slow ? Math.max(0.4, state.rate * 0.7) : state.rate);
+    var entry = state.queue[state.index];
+    if (!entry) return;
+    speak(entry.fr, slow ? Math.max(0.4, state.rate * 0.7) : state.rate);
   }
 
   // ------------------------------------------------------------------- clock
@@ -203,6 +214,46 @@
     clockId = setInterval(function () { el.time.textContent = fmt(Date.now() - state.startTime); }, 250);
   }
   function stopClock() { if (clockId) { clearInterval(clockId); clockId = null; } }
+
+  // ------------------------------------------------------------------- modes
+
+  function paintModeButtons() {
+    modeButtons.forEach(function (b) {
+      b.setAttribute('aria-checked', b.dataset.mode === state.mode ? 'true' : 'false');
+    });
+  }
+
+  function setMode(mode) {
+    state.mode = mode;
+    paintModeButtons();
+    saveSettings();
+    updateRoundLabel();
+  }
+
+  /* Translate and Mixed need at least one translated line. */
+  function updateModeAvailability() {
+    var translated = state.source ? state.source.withTranslation : 0;
+    var total = state.source ? state.source.items.length : 0;
+    var canTranslate = translated > 0;
+
+    modeButtons.forEach(function (b) {
+      if (b.dataset.mode !== 'listen') {
+        b.disabled = !canTranslate;
+        b.title = canTranslate ? '' : 'This file has no English translations.';
+      }
+    });
+    if (!canTranslate && state.mode !== 'listen') setMode('listen');
+    else paintModeButtons();
+
+    var hint = '';
+    if (state.source && !canTranslate) {
+      hint = 'No translations in this file — add “| English” after a sentence to unlock Translate and Mixed.';
+    } else if (state.source && translated < total) {
+      hint = translated + ' of ' + total + ' sentences have a translation; the rest are listening-only.';
+    }
+    el.modeHint.textContent = hint;
+    el.modeHint.hidden = !hint;
+  }
 
   // ------------------------------------------------------------ file loading
 
@@ -219,6 +270,9 @@
     stopSpeakingUI();
     el.results.hidden = true;
     el.stage.hidden = false;
+    el.prompt.hidden = true;
+    el.playrow.hidden = false;
+    el.slow.hidden = false;
     el.feedback.className = 'feedback';
     el.feedback.innerHTML = '';
     el.input.value = '';
@@ -230,6 +284,7 @@
     el.time.textContent = '0:00';
     el.rounds.disabled = false;
     el.changeFile.disabled = false;
+    modeButtons.forEach(function (b) { b.classList.remove('is-locked'); });
   }
 
   function applySource(source) {
@@ -238,7 +293,11 @@
     el.dropzone.hidden = true;
     el.filechip.hidden = false;
     el.fileName.textContent = source.name;
-    el.fileCount.textContent = source.lines.length + (source.lines.length === 1 ? ' sentence' : ' sentences');
+
+    var n = source.items.length;
+    var count = n + (n === 1 ? ' sentence' : ' sentences');
+    if (source.withTranslation) count += ' · ' + source.withTranslation + ' translated';
+    el.fileCount.textContent = count;
     el.sourceError.hidden = true;
 
     var notes = [];
@@ -250,7 +309,8 @@
     el.sourceNote.hidden = !notes.length;
 
     el.play.disabled = false;
-    el.input.placeholder = 'Press Start, then type what you hear…';
+    el.input.placeholder = 'Press Start to begin…';
+    updateModeAvailability();
     updateRoundLabel();
   }
 
@@ -259,18 +319,28 @@
     el.sourceError.hidden = false;
   }
 
-  function updateRoundLabel() {
-    var total = plannedRounds();
-    el.round.textContent = (state.active ? (state.index + 1) : '–') + ' / ' + (total || '–');
+  // -------------------------------------------------------------- game flow
+
+  /* The lines eligible for the current mode. */
+  function pool() {
+    if (!state.source) return [];
+    if (state.mode === 'translate') {
+      return state.source.items.filter(function (it) { return !!it.en; });
+    }
+    return state.source.items;
   }
 
   function plannedRounds() {
-    if (!state.source) return 0;
-    if (state.rounds === 'all') return state.source.lines.length;
-    return Math.min(parseInt(state.rounds, 10), state.source.lines.length);
+    var available = pool().length;
+    if (!available) return 0;
+    if (state.rounds === 'all') return available;
+    return Math.min(parseInt(state.rounds, 10), available);
   }
 
-  // -------------------------------------------------------------- game flow
+  function updateRoundLabel() {
+    var total = state.active ? state.queue.length : plannedRounds();
+    el.round.textContent = (state.active ? (state.index + 1) : '–') + ' / ' + (total || '–');
+  }
 
   function shuffle(arr) {
     var a = arr.slice();
@@ -281,16 +351,28 @@
     return a;
   }
 
+  function kindFor(item) {
+    if (state.mode === 'listen') return 'listen';
+    if (state.mode === 'translate') return 'translate';
+    if (!item.en) return 'listen';                 // mixed, but nothing to show
+    return Math.random() < 0.5 ? 'translate' : 'listen';
+  }
+
   function buildQueue() {
-    var lines = state.source.lines;
-    var n = plannedRounds();
-    return shuffle(lines).slice(0, n);
+    return shuffle(pool()).slice(0, plannedRounds()).map(function (it) {
+      return { fr: it.fr, en: it.en, kind: kindFor(it) };
+    });
   }
 
   function startGame(queue) {
     if (!state.source) return;
     state.queue = queue || buildQueue();
-    if (!state.queue.length) { sourceError('That file has no sentences to practise.'); return; }
+    if (!state.queue.length) {
+      sourceError(state.mode === 'translate'
+        ? 'No sentences in this file have an English translation.'
+        : 'That file has no sentences to practise.');
+      return;
+    }
 
     state.active = true;
     state.index = 0;
@@ -303,25 +385,39 @@
     el.retry.hidden = true;
     el.correct.textContent = '0';
     el.time.textContent = '0:00';
-    el.playLabel.textContent = 'Replay';
-    el.slow.disabled = false;
     el.rounds.disabled = true;
     el.changeFile.disabled = true;
+    modeButtons.forEach(function (b) { b.classList.add('is-locked'); });
     startClock();
     beginRound();
   }
 
   function beginRound() {
+    var entry = state.queue[state.index];
+    var translating = entry.kind === 'translate';
+
     state.answered = false;
     updateRoundLabel();
+
+    el.prompt.hidden = !translating;
+    if (translating) el.promptText.textContent = entry.en;
+
+    // A translate round is silent: no audio controls at all until it's answered.
+    el.playrow.hidden = translating;
+    el.slow.hidden = translating;
+    el.play.disabled = false;
+    el.playLabel.textContent = 'Replay';
+
     el.input.value = '';
     el.input.disabled = false;
+    el.input.placeholder = translating ? 'Type the French sentence…' : 'Type what you hear…';
     el.reveal.disabled = false;
     el.check.textContent = 'Check';
     el.feedback.className = 'feedback';
     el.feedback.innerHTML = '';
     el.input.focus();
-    speakCurrent(false);
+
+    if (!translating) speakCurrent(false);
   }
 
   function resolveRound(revealed) {
@@ -330,21 +426,27 @@
     if (synth) synth.cancel();
     stopSpeakingUI();
 
-    var line = state.queue[state.index];
+    var entry = state.queue[state.index];
     var answer = el.input.value.trim();
-    var result = revealed
-      ? window.FrDiff.compare(line, '', state.marking)
-      : window.FrDiff.compare(line, answer, state.marking);
+    var result = window.FrDiff.compare(entry.fr, revealed ? '' : answer, state.marking);
     if (revealed) result.correct = false;
 
-    state.results.push({ line: line, answer: answer, result: result, revealed: !!revealed });
+    state.results.push({ entry: entry, answer: answer, result: result, revealed: !!revealed });
     if (result.correct) state.correct++;
     el.correct.textContent = state.correct;
 
     el.input.disabled = true;
     el.reveal.disabled = true;
     el.check.textContent = (state.index + 1 >= state.queue.length) ? 'See results' : 'Next';
-    renderFeedback(line, result, revealed);
+
+    // Now that the round is over, offer to hear the sentence.
+    if (entry.kind === 'translate') {
+      el.playrow.hidden = false;
+      el.slow.hidden = true;
+      el.playLabel.textContent = 'Hear it';
+    }
+
+    renderFeedback(entry, result, revealed);
     el.check.focus();
   }
 
@@ -375,17 +477,18 @@
     el.time.textContent = fmt(totalMs);
 
     el.rList.innerHTML = '';
-    state.results.forEach(function (r, i) {
-      el.rList.appendChild(resultItem(r, i + 1));
-    });
+    state.results.forEach(function (r, i) { el.rList.appendChild(resultItem(r, i + 1)); });
 
-    var missed = state.results.filter(function (r) { return !r.result.correct; });
-    el.retry.hidden = missed.length === 0;
+    el.retry.hidden = state.results.every(function (r) { return r.result.correct; });
 
     el.stage.hidden = true;
     el.results.hidden = false;
+    el.prompt.hidden = true;
+    el.playrow.hidden = false;
+    el.slow.hidden = false;
     el.rounds.disabled = false;
     el.changeFile.disabled = false;
+    modeButtons.forEach(function (b) { b.classList.remove('is-locked'); });
     el.playLabel.textContent = 'Start dictation';
   }
 
@@ -461,7 +564,7 @@
     return wrap;
   }
 
-  function renderFeedback(line, result, revealed) {
+  function renderFeedback(entry, result, revealed) {
     el.feedback.innerHTML = '';
     el.feedback.className = 'feedback ' + (result.correct ? 'is-ok' : 'is-err');
 
@@ -487,9 +590,17 @@
     truth.appendChild(label('Correct'));
     var p = document.createElement('p');
     p.className = 'diffline diffline--truth';
-    p.textContent = line;
+    p.textContent = entry.fr;
     truth.appendChild(p);
     el.feedback.appendChild(truth);
+
+    // In a listening round the English is bonus context, so show it afterwards.
+    if (entry.kind === 'listen' && entry.en) {
+      var meaning = document.createElement('p');
+      meaning.className = 'feedback__en';
+      meaning.textContent = entry.en;
+      el.feedback.appendChild(meaning);
+    }
 
     if (!result.perfect) el.feedback.appendChild(legend());
   }
@@ -519,12 +630,21 @@
     var head = document.createElement('div');
     head.className = 'r-head';
     head.innerHTML = '<span class="r-mark">' + (r.result.correct ? '✓' : '✗') + '</span>' +
-      '<span class="r-n">' + n + '</span>';
+      '<span class="r-n">' + n + '</span>' +
+      '<span class="r-kind" title="' + (r.entry.kind === 'translate' ? 'Translation round' : 'Listening round') + '">' +
+      (r.entry.kind === 'translate' ? '🇬🇧' : '🎧') + '</span>';
     var sentence = document.createElement('span');
     sentence.className = 'r-line';
-    sentence.textContent = r.line;
+    sentence.textContent = r.entry.fr;
     head.appendChild(sentence);
     li.appendChild(head);
+
+    if (r.entry.en) {
+      var en = document.createElement('p');
+      en.className = 'r-en';
+      en.textContent = r.entry.en;
+      li.appendChild(en);
+    }
 
     if (!r.result.correct) {
       var d = renderDiffLine(r.result);
@@ -559,10 +679,16 @@
     window.TextSource.forget();
     state.source = null;
     el.play.disabled = true;
-    el.slow.disabled = true;
-    el.input.disabled = true;
     el.input.placeholder = 'Load a text file to begin…';
+    updateModeAvailability();
     updateRoundLabel();
+  });
+
+  modeButtons.forEach(function (b) {
+    b.addEventListener('click', function () {
+      if (state.active || b.disabled) return;
+      setMode(b.dataset.mode);
+    });
   });
 
   el.play.addEventListener('click', function () {
@@ -594,17 +720,19 @@
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.code === 'Space' && document.activeElement !== el.input && state.active && !state.answered) {
-      e.preventDefault();
-      speakCurrent(false);
-    }
+    if (e.code !== 'Space' || document.activeElement === el.input) return;
+    if (!state.active || state.answered) return;
+    if (state.queue[state.index].kind !== 'listen') return;   // silent round
+    e.preventDefault();
+    speakCurrent(false);
   });
 
   el.playagain.addEventListener('click', function () { startGame(); });
 
   el.retry.addEventListener('click', function () {
-    var missed = state.results.filter(function (r) { return !r.result.correct; })
-      .map(function (r) { return r.line; });
+    var missed = state.results
+      .filter(function (r) { return !r.result.correct; })
+      .map(function (r) { return r.entry; });
     startGame(shuffle(missed));
   });
 
@@ -646,5 +774,5 @@
 
   var saved = window.TextSource.restore();
   if (saved) applySource(saved);
-  updateRoundLabel();
+  else { updateModeAvailability(); updateRoundLabel(); }
 })();
