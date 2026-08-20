@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La dictée — French Dictation Game</title>
+  <meta name="description" content="Practise French dictation with your own sentences. Everything runs in your browser; your text file never leaves your device.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main class="app">
+    <header class="app__header">
+      <h1>La dictée</h1>
+      <p class="tagline">Listen to a French sentence, type what you hear, and see exactly what you missed.</p>
+    </header>
+
+    <!-- ---------------------------------------------------------- file setup -->
+    <section class="source" id="source" aria-label="Sentence file">
+      <div class="dropzone" id="dropzone">
+        <p class="dropzone__title">Drop your <code>.txt</code> file here</p>
+        <p class="dropzone__hint">One sentence per line. Lines starting with <code>#</code> are ignored.</p>
+        <label class="btn btn--primary dropzone__btn">
+          Choose a file…
+          <input type="file" id="file" accept=".txt,.text,text/plain" hidden>
+        </label>
+        <p class="dropzone__privacy">🔒 Read in your browser — nothing is uploaded.</p>
+      </div>
+
+      <div class="filechip" id="filechip" hidden>
+        <span class="filechip__icon" aria-hidden="true">📄</span>
+        <span class="filechip__name" id="file-name">—</span>
+        <span class="filechip__count" id="file-count"></span>
+        <button type="button" class="btn btn--ghost btn--small" id="change-file">Change</button>
+      </div>
+
+      <p class="source__error" id="source-error" role="alert" hidden></p>
+      <p class="source__note" id="source-note" hidden></p>
+    </section>
+
+    <!-- ------------------------------------------------------------ controls -->
+    <section class="controls" aria-label="Game settings">
+      <div class="control">
+        <label class="control__label" for="rounds">Rounds</label>
+        <select id="rounds">
+          <option value="5">5 sentences</option>
+          <option value="10" selected>10 sentences</option>
+          <option value="20">20 sentences</option>
+          <option value="all">Whole file</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- ----------------------------------------------------------------- HUD -->
+    <section class="hud" aria-label="Progress">
+      <div class="stat"><span class="stat__value" id="round">– / –</span><span class="stat__key">Round</span></div>
+      <div class="stat"><span class="stat__value" id="correct">0</span><span class="stat__key">Correct</span></div>
+      <div class="stat"><span class="stat__value" id="time">0:00</span><span class="stat__key">Time</span></div>
+    </section>
+
+    <!-- --------------------------------------------------------------- stage -->
+    <section class="stage" id="stage">
+      <div class="playrow">
+        <button id="play" class="play" aria-label="Play the sentence" disabled>
+          <span class="play__icon" aria-hidden="true">▶</span>
+          <span id="play-label" class="play__text">Start dictation</span>
+        </button>
+        <button id="slow" class="btn btn--ghost btn--slow" type="button" disabled>🐢 Slower</button>
+      </div>
+
+      <form id="answer-form" class="answer" autocomplete="off">
+        <textarea id="answer" class="answer__input" rows="3"
+                  spellcheck="false" autocapitalize="off" autocorrect="off" autocomplete="off"
+                  placeholder="Load a text file to begin…" aria-label="Your answer" disabled></textarea>
+        <div class="answer__buttons">
+          <button type="submit" id="check" class="btn btn--primary">Check</button>
+          <button type="button" id="reveal" class="btn btn--ghost" disabled>Reveal</button>
+        </div>
+      </form>
+
+      <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+    </section>
+
+    <!-- ------------------------------------------------------------- results -->
+    <section class="results" id="results" hidden aria-label="Results">
+      <h2 class="results__title">🏁 Results</h2>
+      <p class="results__score"><span id="r-correct">0</span> / <span id="r-total">0</span> sentences correct</p>
+      <p class="results__meta">
+        <span id="r-accuracy">0%</span> of words right ·
+        Time <strong id="r-time">0:00</strong> · <span id="r-avg">0.0s</span> per sentence
+      </p>
+      <ul class="results__list" id="r-list"></ul>
+      <div class="results__actions">
+        <button id="playagain" class="btn btn--primary">Play again</button>
+        <button id="retry" class="btn btn--ghost" hidden>Retry my mistakes</button>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------ settings -->
+    <details class="settings">
+      <summary>⚙ Settings</summary>
+      <div class="settings__body">
+        <label class="setting">
+          <span>Speech speed</span>
+          <input id="rate" type="range" min="0.5" max="1.2" step="0.05" value="0.9">
+          <output id="rate-out">0.9×</output>
+        </label>
+        <label class="setting">
+          <span>Voice</span>
+          <select id="voice"></select>
+        </label>
+
+        <fieldset class="setting-group">
+          <legend>Marking</legend>
+          <label class="setting">
+            <span>Accents</span>
+            <select id="opt-accents">
+              <option value="ignore">Ignore</option>
+              <option value="minor" selected>Count as slips</option>
+              <option value="strict">Must be exact</option>
+            </select>
+          </label>
+          <label class="setting">
+            <span>Capitals</span>
+            <select id="opt-case">
+              <option value="ignore" selected>Ignore</option>
+              <option value="minor">Count as slips</option>
+              <option value="strict">Must be exact</option>
+            </select>
+          </label>
+          <label class="setting">
+            <span>Punctuation</span>
+            <select id="opt-punct">
+              <option value="ignore" selected>Ignore</option>
+              <option value="minor">Count as slips</option>
+              <option value="strict">Must be exact</option>
+            </select>
+          </label>
+          <p class="setting__hint">“Slips” are reported and highlighted, but still let the sentence count as correct.</p>
+        </fieldset>
+
+        <p id="voice-note" class="voice-note"></p>
+      </div>
+    </details>
+
+    <footer class="app__footer">
+      <span id="prompt-hint"><kbd>Enter</kbd> to check / continue · <kbd>Shift</kbd>+<kbd>Enter</kbd> for a new line · <kbd>Space</kbd> to replay</span>
+    </footer>
+  </main>
+
+  <script src="diff-fr.js"></script>
+  <script src="text-source.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+# Sample sentences for La dictée.
+# One sentence per line. Lines starting with # are ignored, so you can use
+# them to organise your own files.
+
+# --- Everyday ---
+Il fait très beau aujourd'hui.
+Je voudrais un café, s'il vous plaît.
+Où est la gare, s'il vous plaît ?
+Nous partons demain matin à huit heures.
+Elle a oublié son parapluie dans le train.
+Le chat noir dort sur le canapé.
+J'ai acheté du pain et des œufs au marché.
+Est-ce que tu peux répéter, s'il te plaît ?
+Mon frère travaille dans une école à Lyon.
+Il y a beaucoup de monde dans la rue.
+
+# --- A bit harder ---
+Les enfants ont mangé toutes les fraises du jardin.
+Si j'avais su, je ne serais pas venu si tôt.
+Elle m'a dit qu'elle viendrait vers dix-sept heures.
+La fenêtre de la chambre était restée ouverte toute la nuit.
+Nous nous sommes promenés le long de la rivière.
+Il faut que tu finisses tes devoirs avant de sortir.
+Ce sont les livres dont je t'ai parlé la semaine dernière.
+Malgré la pluie, ils ont décidé de continuer la randonnée.
+J'espère que vous avez passé de bonnes vacances en Suisse.
+Le train de quatorze heures trente a vingt minutes de retard.
